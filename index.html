@@ -24,7 +24,7 @@
         const { useState, useMemo, useEffect, useRef } = React;
 
         // --- KONFIGURASI GOOGLE SHEETS (Isi jika sudah buat Apps Script) ---
-        const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxr8JK99_b0OqORtjSBrYUFLrcgwsP_hREkI3VNI2tUEoJfaGFeZGrVSE95pot2_HcPbg/exec"; 
+        const GOOGLE_SHEET_WEB_APP_URL = ""; 
 
         const INCOME_CATEGORIES = ['Kotak Amal Jumat', 'Kotak Amal Harian', 'Donasi'];
         const EXPENSE_CATEGORIES = ['Fasilitas & Operasional Masjid', 'Uang Uhro', 'Kegiatan'];
@@ -168,15 +168,15 @@
           };
 
           const generateExportElement = async () => {
-            reportRef.current.style.display = 'block';
-            const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
-            reportRef.current.style.display = 'none';
+            if (!reportRef.current) return null;
+            const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
             return canvas;
           };
 
           const downloadJPG = async () => {
             try {
               const canvas = await generateExportElement();
+              if (!canvas) return;
               const link = document.createElement('a');
               link.download = `Laporan_Keuangan_Masjid_${MONTHS[selectedMonth]}_${selectedYear}.jpg`;
               link.href = canvas.toDataURL('image/jpeg', 1.0);
@@ -189,8 +189,9 @@
           const downloadPDF = async () => {
             try {
               const canvas = await generateExportElement();
+              if (!canvas) return;
               const imgData = canvas.toDataURL('image/png');
-              const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+              const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
               const pdfWidth = pdf.internal.pageSize.getWidth();
               const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
               pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -283,10 +284,10 @@
                       <span>Rincian {MONTHS[selectedMonth]} {selectedYear}</span>
                    </div>
                    <div className="flex gap-2">
-                      <button onClick={downloadJPG} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition">
+                      <button onClick={downloadJPG} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
                         <i data-lucide="image" className="w-4 h-4 text-emerald-600"></i> JPG
                       </button>
-                      <button onClick={downloadPDF} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition">
+                      <button onClick={downloadPDF} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
                         <i data-lucide="file-text" className="w-4 h-4 text-rose-600"></i> PDF
                       </button>
                    </div>
@@ -333,7 +334,7 @@
                                 {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
                               </td>
                               <td className="px-5 py-4 text-center">
-                                <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-rose-500 p-1 rounded transition">
+                                <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-rose-500 p-1 rounded transition cursor-pointer">
                                   <i data-lucide="trash-2" className="w-4 h-4"></i>
                                 </button>
                               </td>
@@ -346,8 +347,8 @@
                 </div>
               </main>
 
-              {/* Report Hidden template for export */}
-              <div style={{ display: 'none' }}>
+              {/* Report Hidden template for export (Posisi di luar layar agar terdeteksi canvas dengan benar) */}
+              <div className="fixed -left-[9999px] top-0 pointer-events-none">
                 <div ref={reportRef} className="bg-white p-10 w-[800px] font-sans text-slate-800">
                   <div className="text-center border-b-4 border-emerald-800 pb-6 mb-6">
                     <h1 className="text-3xl font-bold text-emerald-900 mb-1">LAPORAN KEUANGAN MASJID</h1>
@@ -392,6 +393,16 @@
                        ))}
                      </tbody>
                   </table>
+                  <div className="flex justify-between mt-16 px-10">
+                     <div className="text-center">
+                        <p className="mb-16">Mengetahui,<br/>Ketua DKM</p>
+                        <p className="font-bold underline">_________________</p>
+                     </div>
+                     <div className="text-center">
+                        <p className="mb-16">Dibuat Oleh,<br/>Bendahara Masjid</p>
+                        <p className="font-bold underline">_________________</p>
+                     </div>
+                  </div>
                 </div>
               </div>
 
@@ -401,7 +412,7 @@
                   <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
                     <div className="px-6 py-4 bg-gradient-to-r from-emerald-800 to-teal-800 text-white flex justify-between items-center">
                       <h3 className="text-lg font-bold">Input Transaksi</h3>
-                      <button onClick={() => setIsModalOpen(false)}><i data-lucide="x" className="w-5 h-5"></i></button>
+                      <button onClick={() => setIsModalOpen(false)} className="cursor-pointer"><i data-lucide="x" className="w-5 h-5"></i></button>
                     </div>
                     <form onSubmit={handleSubmit} className="p-5 space-y-4">
                       <div className="flex p-1 bg-slate-100 rounded-xl">
@@ -440,8 +451,8 @@
                         <textarea name="description" value={formData.description} onChange={handleInputChange} rows="2" className="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm resize-none"></textarea>
                       </div>
                       <div className="flex space-x-3 pt-2">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 rounded-xl font-semibold text-slate-600">Batal</button>
-                        <button type="submit" className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold shadow">Simpan</button>
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 rounded-xl font-semibold text-slate-600 cursor-pointer">Batal</button>
+                        <button type="submit" className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold shadow cursor-pointer">Simpan</button>
                       </div>
                     </form>
                   </div>
