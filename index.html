@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Keuangan Masjid Miftahul Yaqin</title>
-    <!-- Konfigurasi PWA Manifest Inline -->
-    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Keuangan%20Masjid%20Miftahul%20Yaqin%22,%22short_name%22:%22Masjid%20Miftahul%20Yaqin%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23065f46%22,%22theme_color%22:%22%23065f46%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20512%20512'%3E%3Crect%20width='512%20height='512%20rx='110%20fill='%23065f46'/%3E%3Cpath%20d='M256%2096C176%2096%20120%20160%20120%20224v192h272V224c0-64-56-128-136-128z'%20fill='%23fbbf24'/%3E%3Cpath%20d='M256%2064c-12%200-20%208-20%2020s8%2020%2020%2020%2020-8%2020-20-8-20-20-20z'%20fill='%23ffffff'/%3E%3C/svg%3E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22}]}">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%23065f46'/><path d='M256 96C176 96 120 160 120 224v192h272V224c0-64-56-128-136-128z' fill='%23fbbf24'/></svg>">
     
+    <!-- Meta untuk PWA & Ikon Layar Utama -->
+    <meta name="theme-color" content="#065f46">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/ mosque.png">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/96/ mosque.png">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -371,8 +373,8 @@
                   </div>
                   <div className="flex gap-4 mb-8">
                     <div className="flex-1 bg-emerald-50 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-emerald-700">Total Pemasukan</p><p className="text-xl font-bold text-emerald-900">{formatRupiah(totalIncome)}</p></div>
-                    <div className="flex-1 bg-rose-50 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-rose-700">Total Pengeluaran</p><p className="text-xl font-bold text-rose-900">{formatRupiah(totalExpense)}</p></div>
-                    <div className="flex-1 bg-slate-100 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-slate-700">Saldo Bersih</p><p className="text-xl font-bold text-slate-900">{formatRupiah(balance)}</p></div>
+                    <div className="flex-1 bg-rose-50 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-rose-700">Total Pengeluaran</p><p className="text-xl font-bold text-emerald-900">{formatRupiah(totalExpense)}</p></div>
+                    <div className="flex-1 bg-slate-100 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-slate-700">Saldo Bersih</p><p className="text-xl font-bold text-emerald-900">{formatRupiah(balance)}</p></div>
                   </div>
                   <table className="w-full text-left text-sm border-collapse mb-8">
                      <thead>
