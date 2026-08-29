@@ -23,7 +23,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
-        // --- KONFIGURASI GOOGLE SHEETS (Isi jika sudah buat Apps Script) ---
+        // --- KONFIGURASI GOOGLE SHEETS ---
         const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxr8JK99_b0OqORtjSBrYUFLrcgwsP_hREkI3VNI2tUEoJfaGFeZGrVSE95pot2_HcPbg/exec"; 
 
         const INCOME_CATEGORIES = ['Kotak Amal Jumat', 'Kotak Amal Harian', 'Donasi'];
@@ -97,20 +97,45 @@
             }).sort((a, b) => new Date(b.date) - new Date(a.date));
           }, [transactions, selectedMonth, selectedYear]);
 
-          const { totalIncome, totalExpense, balance } = useMemo(() => {
-            return filteredTransactions.reduce(
-              (acc, curr) => {
-                if (curr.type === 'income') {
-                  acc.totalIncome += Number(curr.amount);
-                  acc.balance += Number(curr.amount);
-                } else {
-                  acc.totalExpense += Number(curr.amount);
-                  acc.balance -= Number(curr.amount);
-                }
-                return acc;
-              },
-              { totalIncome: 0, totalExpense: 0, balance: 0 }
-            );
+          // Kalkulasi Total & Per Rincian Metode serta Kategori
+          const { totalIncome, totalExpense, balance, cashBalance, nonCashBalance, categoryStats } = useMemo(() => {
+            let tInc = 0;
+            let tExp = 0;
+            let cash = 0;
+            let nonCash = 0;
+            
+            const catMap = {
+              'Kotak Amal Jumat': 0,
+              'Kotak Amal Harian': 0,
+              'Donasi': 0,
+              'Fasilitas & Operasional Masjid': 0,
+              'Uang Uhro': 0,
+              'Kegiatan': 0
+            };
+
+            filteredTransactions.forEach(curr => {
+              const amt = Number(curr.amount);
+              catMap[curr.category] = (catMap[curr.category] || 0) + amt;
+
+              if (curr.type === 'income') {
+                tInc += amt;
+                if (curr.paymentMethod === 'Tunai') cash += amt;
+                else nonCash += amt;
+              } else {
+                tExp += amt;
+                if (curr.paymentMethod === 'Tunai') cash -= amt;
+                else nonCash -= amt;
+              }
+            });
+
+            return {
+              totalIncome: tInc,
+              totalExpense: tExp,
+              balance: tInc - tExp,
+              cashBalance: cash,
+              nonCashBalance: nonCash,
+              categoryStats: catMap
+            };
           }, [filteredTransactions]);
 
           const handleInputChange = (e) => {
@@ -247,7 +272,7 @@
                 </div>
               </header>
 
-              {/* Main Container diberi margin-top agar konten tidak tertutup header yang fixed */}
+              {/* Main Container */}
               <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-36 sm:mt-28 relative z-20 flex-1">
                 <div className="flex justify-end mb-4 text-xs font-medium">
                   {syncStatus === 'local' && <span className="flex items-center text-slate-600 bg-white px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud-off" className="w-3.5 h-3.5 mr-1.5"></i> Mode Lokal (Belum Terhubung G-Sheet)</span>}
@@ -256,34 +281,107 @@
                   {syncStatus === 'error' && <span className="flex items-center text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud-off" className="w-3.5 h-3.5 mr-1.5"></i> Gagal Sinkronisasi</span>}
                 </div>
 
+                {/* Dashboard Kartu Utama */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold text-slate-500 uppercase">Saldo {MONTHS[selectedMonth]}</h3>
+                      <h3 className="text-sm font-semibold text-slate-500 uppercase">Total Saldo {MONTHS[selectedMonth]}</h3>
                       <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><i data-lucide="wallet" className="w-5 h-5"></i></div>
                     </div>
                     <p className="text-3xl font-bold text-emerald-800">{formatRupiah(balance)}</p>
+                    
+                    {/* Rincian Tunai vs Non Tunai */}
+                    <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-emerald-50/60 p-2 rounded-xl">
+                        <span className="text-slate-500 block mb-0.5">Tunai</span>
+                        <span className="font-bold text-emerald-700">{formatRupiah(cashBalance)}</span>
+                      </div>
+                      <div className="bg-teal-50/60 p-2 rounded-xl">
+                        <span className="text-slate-500 block mb-0.5">Non Tunai (QRIS)</span>
+                        <span className="font-bold text-teal-700">{formatRupiah(nonCashBalance)}</span>
+                      </div>
+                    </div>
                   </div>
+
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-semibold text-slate-500 uppercase">Pemasukan</h3>
                       <div className="p-2 bg-teal-100 rounded-lg text-teal-600"><i data-lucide="trending-up" className="w-5 h-5"></i></div>
                     </div>
                     <p className="text-2xl font-bold text-teal-700">{formatRupiah(totalIncome)}</p>
+                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                      Akumulasi seluruh kategori pemasukan bulan ini.
+                    </div>
                   </div>
+
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-semibold text-slate-500 uppercase">Pengeluaran</h3>
                       <div className="p-2 bg-rose-100 rounded-lg text-rose-600"><i data-lucide="trending-down" className="w-5 h-5"></i></div>
                     </div>
                     <p className="text-2xl font-bold text-rose-600">{formatRupiah(totalExpense)}</p>
+                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                      Akumulasi seluruh kategori pengeluaran bulan ini.
+                    </div>
                   </div>
                 </div>
 
+                {/* --- DIAGRAM STATISTIK BERDASARKAN KATEGORI --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  {/* Statistik Pemasukan */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <i data-lucide="pie-chart" className="w-5 h-5 text-emerald-600"></i> Statistik Pemasukan Berdasarkan Kategori
+                    </h3>
+                    <div className="space-y-4">
+                      {INCOME_CATEGORIES.map(cat => {
+                        const amount = categoryStats[cat] || 0;
+                        const percentage = totalIncome > 0 ? Math.round((amount / totalIncome) * 100) : 0;
+                        return (
+                          <div key={cat} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium text-slate-700">{cat}</span>
+                              <span className="font-bold text-emerald-700">{formatRupiah(amount)} ({percentage}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                              <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Statistik Pengeluaran */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <i data-lucide="bar-chart-3" className="w-5 h-5 text-rose-600"></i> Statistik Pengeluaran Berdasarkan Kategori
+                    </h3>
+                    <div className="space-y-4">
+                      {EXPENSE_CATEGORIES.map(cat => {
+                        const amount = categoryStats[cat] || 0;
+                        const percentage = totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0;
+                        return (
+                          <div key={cat} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium text-slate-700">{cat}</span>
+                              <span className="font-bold text-rose-600">{formatRupiah(amount)} ({percentage}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                              <div className="bg-gradient-to-r from-rose-500 to-orange-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Header Rincian Transaksi & Tombol Download */}
                 <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
                    <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm sm:text-base">
                       <i data-lucide="history" className="w-5 h-5 text-emerald-600"></i>
-                      <span>Rincian {MONTHS[selectedMonth]} {selectedYear}</span>
+                      <span>Rincian Transaksi {MONTHS[selectedMonth]} {selectedYear}</span>
                    </div>
                    <div className="flex gap-2">
                       <button onClick={downloadJPG} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
@@ -295,6 +393,7 @@
                    </div>
                 </div>
 
+                {/* Tabel Rincian Transaksi */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   {isLoading ? (
                     <div className="p-12 text-center text-slate-500">Memuat data...</div>
