@@ -64,9 +64,9 @@
             setIsLoading(true);
             if (!GOOGLE_SHEET_WEB_APP_URL) {
               setTransactions([
-                { id: '1', type: 'income', category: 'Kotak Amal Jumat', amount: 1500000, date: `${selectedYear}-05-05`, description: 'Jumat minggu pertama', paymentMethod: 'Tunai' },
-                { id: '2', type: 'income', category: 'Donasi', amount: 500000, date: `${selectedYear}-05-10`, description: 'Hamba Allah via QRIS', paymentMethod: 'Non Tunai' },
-                { id: '3', type: 'expense', category: 'Fasilitas & Operasional Masjid', amount: 300000, date: `${selectedYear}-05-12`, description: 'Bayar PLN', paymentMethod: 'Non Tunai' },
+                { id: '1', type: 'income', category: 'Kotak Amal Jumat', amount: 1500000, date: `${selectedYear}-08-05`, description: 'Jumat minggu pertama', paymentMethod: 'Tunai' },
+                { id: '2', type: 'income', category: 'Donasi', amount: 500000, date: `${selectedYear}-08-10`, description: 'Hamba Allah via QRIS', paymentMethod: 'Non Tunai' },
+                { id: '3', type: 'expense', category: 'Fasilitas & Operasional Masjid', amount: 300000, date: `${selectedYear}-08-12`, description: 'Bayar PLN', paymentMethod: 'Non Tunai' },
               ]);
               setSyncStatus('local');
               setIsLoading(false);
@@ -378,16 +378,16 @@
                 </div>
 
                 {/* Header Rincian Transaksi & Tombol Download */}
-                <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
                    <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm sm:text-base">
                       <i data-lucide="history" className="w-5 h-5 text-emerald-600"></i>
                       <span>Rincian Transaksi {MONTHS[selectedMonth]} {selectedYear}</span>
                    </div>
-                   <div className="flex gap-2">
-                      <button onClick={downloadJPG} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
+                   <div className="flex gap-2 w-full sm:w-auto justify-end">
+                      <button onClick={downloadJPG} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
                         <i data-lucide="image" className="w-4 h-4 text-emerald-600"></i> JPG
                       </button>
-                      <button onClick={downloadPDF} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
+                      <button onClick={downloadPDF} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
                         <i data-lucide="file-text" className="w-4 h-4 text-rose-600"></i> PDF
                       </button>
                    </div>
@@ -403,39 +403,41 @@
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm whitespace-nowrap">
+                      <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                           <tr>
-                            <th className="px-5 py-4 font-semibold">Tanggal</th>
-                            <th className="px-5 py-4 font-semibold">Kategori</th>
-                            <th className="px-5 py-4 font-semibold">Metode</th>
-                            <th className="px-5 py-4 font-semibold">Keterangan</th>
-                            <th className="px-5 py-4 font-semibold text-right">Nominal</th>
-                            <th className="px-5 py-4 font-semibold text-center">Aksi</th>
+                            <th className="px-4 py-3 font-semibold whitespace-nowrap">Tanggal</th>
+                            <th className="px-4 py-3 font-semibold whitespace-nowrap">Kategori</th>
+                            <th className="px-4 py-3 font-semibold whitespace-nowrap">Metode</th>
+                            <th className="px-4 py-3 font-semibold min-w-[150px]">Keterangan</th>
+                            <th className="px-4 py-3 font-semibold text-right whitespace-nowrap">Nominal</th>
+                            <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {filteredTransactions.map((t) => (
                             <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-5 py-4 text-slate-600">
+                              <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                                 {new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                               </td>
-                              <td className="px-5 py-4">
+                              <td className="px-4 py-3.5 whitespace-nowrap">
                                 <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${t.type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
                                   {t.category}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 text-slate-500 text-xs">
+                              <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">
                                 {t.paymentMethod}
                               </td>
-                              <td className="px-5 py-4 text-slate-600 truncate max-w-[200px]">
-                                {t.description || '-'}
+                              <td className="px-4 py-3.5 text-slate-600">
+                                <div className="max-w-[200px] truncate" title={t.description}>
+                                  {t.description || '-'}
+                                </div>
                               </td>
-                              <td className={`px-5 py-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              <td className={`px-4 py-3.5 text-right font-bold whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
                               </td>
-                              <td className="px-5 py-4 text-center">
-                                <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-rose-500 p-1 rounded transition cursor-pointer">
+                              <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                <button onClick={() => handleDelete(t.id)} className="inline-flex items-center justify-center p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer" title="Hapus Transaksi">
                                   <i data-lucide="trash-2" className="w-4 h-4"></i>
                                 </button>
                               </td>
