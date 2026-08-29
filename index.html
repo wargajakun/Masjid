@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Keuangan Masjid Miftahul Yaqin</title>
+    <!-- Konfigurasi PWA Manifest Inline -->
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Keuangan%20Masjid%20Miftahul%20Yaqin%22,%22short_name%22:%22Masjid%20Miftahul%20Yaqin%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23065f46%22,%22theme_color%22:%22%23065f46%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20512%20512'%3E%3Crect%20width='512%20height='512%20rx='110%20fill='%23065f46'/%3E%3Cpath%20d='M256%2096C176%2096%20120%20160%20120%20224v192h272V224c0-64-56-128-136-128z'%20fill='%23fbbf24'/%3E%3Cpath%20d='M256%2064c-12%200-20%208-20%2020s8%2020%2020%2020%2020-8%2020-20-8-20-20-20z'%20fill='%23ffffff'/%3E%3C/svg%3E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22}]}">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%23065f46'/><path d='M256 96C176 96 120 160 120 224v192h272V224c0-64-56-128-136-128z' fill='%23fbbf24'/></svg>">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -13,7 +17,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- html2canvas & jsPDF untuk Export -->
+    <!-- html2canvas & jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -22,8 +26,6 @@
 
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
-
-        // --- KONFIGURASI GOOGLE SHEETS ---
         const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxr8JK99_b0OqORtjSBrYUFLrcgwsP_hREkI3VNI2tUEoJfaGFeZGrVSE95pot2_HcPbg/exec"; 
 
         const INCOME_CATEGORIES = ['Kotak Amal Jumat', 'Kotak Amal Harian', 'Donasi'];
@@ -31,20 +33,16 @@
         const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
         const formatRupiah = (amount) => {
-          return new Intl.NumberFormat('id-ID', {
-            style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0
-          }).format(amount);
+          return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
         };
 
         function App() {
           const [transactions, setTransactions] = useState([]);
           const [isLoading, setIsLoading] = useState(true);
           const [syncStatus, setSyncStatus] = useState(GOOGLE_SHEET_WEB_APP_URL ? 'syncing' : 'local');
-
           const [isModalOpen, setIsModalOpen] = useState(false);
           const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
           const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-          
           const reportRef = useRef(null);
 
           const [formData, setFormData] = useState({
@@ -97,45 +95,23 @@
             }).sort((a, b) => new Date(b.date) - new Date(a.date));
           }, [transactions, selectedMonth, selectedYear]);
 
-          // Kalkulasi Total & Per Rincian Metode serta Kategori
           const { totalIncome, totalExpense, balance, cashBalance, nonCashBalance, categoryStats } = useMemo(() => {
-            let tInc = 0;
-            let tExp = 0;
-            let cash = 0;
-            let nonCash = 0;
-            
-            const catMap = {
-              'Kotak Amal Jumat': 0,
-              'Kotak Amal Harian': 0,
-              'Donasi': 0,
-              'Fasilitas & Operasional Masjid': 0,
-              'Uang Uhro': 0,
-              'Kegiatan': 0
-            };
+            let tInc = 0, tExp = 0, cash = 0, nonCash = 0;
+            const catMap = { 'Kotak Amal Jumat': 0, 'Kotak Amal Harian': 0, 'Donasi': 0, 'Fasilitas & Operasional Masjid': 0, 'Uang Uhro': 0, 'Kegiatan': 0 };
 
             filteredTransactions.forEach(curr => {
               const amt = Number(curr.amount);
               catMap[curr.category] = (catMap[curr.category] || 0) + amt;
-
               if (curr.type === 'income') {
                 tInc += amt;
-                if (curr.paymentMethod === 'Tunai') cash += amt;
-                else nonCash += amt;
+                if (curr.paymentMethod === 'Tunai') cash += amt; else nonCash += amt;
               } else {
                 tExp += amt;
-                if (curr.paymentMethod === 'Tunai') cash -= amt;
-                else nonCash -= amt;
+                if (curr.paymentMethod === 'Tunai') cash -= amt; else nonCash -= amt;
               }
             });
 
-            return {
-              totalIncome: tInc,
-              totalExpense: tExp,
-              balance: tInc - tExp,
-              cashBalance: cash,
-              nonCashBalance: nonCash,
-              categoryStats: catMap
-            };
+            return { totalIncome: tInc, totalExpense: tExp, balance: tInc - tExp, cashBalance: cash, nonCashBalance: nonCash, categoryStats: catMap };
           }, [filteredTransactions]);
 
           const handleInputChange = (e) => {
@@ -143,9 +119,7 @@
             setFormData((prev) => ({
               ...prev,
               [name]: value,
-              ...(name === 'type' && {
-                category: value === 'income' ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0]
-              })
+              ...(name === 'type' && { category: value === 'income' ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0] })
             }));
           };
 
@@ -153,12 +127,7 @@
             e.preventDefault();
             if (!formData.amount || isNaN(formData.amount)) return alert('Nominal tidak valid');
 
-            const newTx = {
-              id: Date.now().toString(),
-              ...formData,
-              amount: Number(formData.amount)
-            };
-
+            const newTx = { id: Date.now().toString(), ...formData, amount: Number(formData.amount) };
             setTransactions([newTx, ...transactions]);
             setIsModalOpen(false);
             setFormData(prev => ({ ...prev, amount: '', description: '' }));
@@ -166,69 +135,51 @@
             if (GOOGLE_SHEET_WEB_APP_URL) {
               setSyncStatus('syncing');
               try {
-                await fetch(GOOGLE_SHEET_WEB_APP_URL, {
-                  method: 'POST',
-                  body: JSON.stringify(newTx),
-                });
+                await fetch(GOOGLE_SHEET_WEB_APP_URL, { method: 'POST', body: JSON.stringify(newTx) });
                 setSyncStatus('synced');
-              } catch (error) {
-                setSyncStatus('error');
-              }
+              } catch (error) { setSyncStatus('error'); }
             }
           };
 
           const handleDelete = async (id) => {
             if (!window.confirm('Hapus transaksi ini?')) return;
             setTransactions(transactions.filter(t => t.id !== id));
-
             if (GOOGLE_SHEET_WEB_APP_URL) {
                setSyncStatus('syncing');
                try {
                  await fetch(`${GOOGLE_SHEET_WEB_APP_URL}?action=delete&id=${id}`);
                  setSyncStatus('synced');
-               } catch (error) {
-                 setSyncStatus('error');
-               }
+               } catch (error) { setSyncStatus('error'); }
             }
           };
 
           const generateExportElement = async () => {
             if (!reportRef.current) return null;
-            const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
-            return canvas;
+            return await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
           };
 
           const downloadJPG = async () => {
-            try {
-              const canvas = await generateExportElement();
-              if (!canvas) return;
-              const link = document.createElement('a');
-              link.download = `Laporan_Keuangan_Masjid_${MONTHS[selectedMonth]}_${selectedYear}.jpg`;
-              link.href = canvas.toDataURL('image/jpeg', 1.0);
-              link.click();
-            } catch (err) {
-              alert("Gagal membuat JPG.");
-            }
+            const canvas = await generateExportElement();
+            if (!canvas) return;
+            const link = document.createElement('a');
+            link.download = `Laporan_Keuangan_Masjid_${MONTHS[selectedMonth]}_${selectedYear}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 1.0);
+            link.click();
           };
 
           const downloadPDF = async () => {
-            try {
-              const canvas = await generateExportElement();
-              if (!canvas) return;
-              const imgData = canvas.toDataURL('image/png');
-              const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
-              const pdfWidth = pdf.internal.pageSize.getWidth();
-              const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-              pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-              pdf.save(`Laporan_Keuangan_Masjid_${MONTHS[selectedMonth]}_${selectedYear}.pdf`);
-            } catch (err) {
-              alert("Gagal membuat PDF.");
-            }
+            const canvas = await generateExportElement();
+            if (!canvas) return;
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Laporan_Keuangan_Masjid_${MONTHS[selectedMonth]}_${selectedYear}.pdf`);
           };
 
           return (
             <div className="min-h-screen pb-12 flex flex-col">
-              {/* Header Statis / Fixed */}
               <header className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-lg">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -244,26 +195,14 @@
                     
                     <div className="flex items-center gap-2">
                       <div className="flex bg-white/10 rounded-xl p-1 backdrop-blur-sm border border-white/10">
-                        <select 
-                          value={selectedMonth} 
-                          onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                          className="bg-transparent text-white font-medium text-sm px-2 py-1.5 outline-none cursor-pointer"
-                        >
+                        <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-transparent text-white font-medium text-sm px-2 py-1.5 outline-none cursor-pointer">
                           {MONTHS.map((m, i) => <option key={m} value={i} className="text-slate-800">{m}</option>)}
                         </select>
-                        <select 
-                          value={selectedYear} 
-                          onChange={(e) => setSelectedYear(Number(e.target.value))}
-                          className="bg-transparent text-white font-medium text-sm px-2 py-1.5 outline-none cursor-pointer border-l border-white/20 pl-3 ml-1"
-                        >
+                        <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="bg-transparent text-white font-medium text-sm px-2 py-1.5 outline-none cursor-pointer border-l border-white/20 pl-3 ml-1">
                           {[selectedYear - 1, selectedYear, selectedYear + 1].map(y => <option key={y} value={y} className="text-slate-800">{y}</option>)}
                         </select>
                       </div>
-                      
-                      <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center space-x-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 px-4 py-2 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all cursor-pointer"
-                      >
+                      <button onClick={() => setIsModalOpen(true)} className="flex items-center space-x-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 px-4 py-2 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all cursor-pointer">
                         <i data-lucide="plus" className="w-4 h-4"></i>
                         <span className="hidden sm:inline">Catat</span>
                       </button>
@@ -272,16 +211,14 @@
                 </div>
               </header>
 
-              {/* Main Container */}
               <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-36 sm:mt-28 relative z-20 flex-1">
                 <div className="flex justify-end mb-4 text-xs font-medium">
-                  {syncStatus === 'local' && <span className="flex items-center text-slate-600 bg-white px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud-off" className="w-3.5 h-3.5 mr-1.5"></i> Mode Lokal (Belum Terhubung G-Sheet)</span>}
+                  {syncStatus === 'local' && <span className="flex items-center text-slate-600 bg-white px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud-off" className="w-3.5 h-3.5 mr-1.5"></i> Mode Lokal</span>}
                   {syncStatus === 'syncing' && <span className="flex items-center text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="refresh-cw" className="w-3.5 h-3.5 mr-1.5 animate-spin"></i> Menyinkronkan...</span>}
-                  {syncStatus === 'synced' && <span className="flex items-center text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud" className="w-3.5 h-3.5 mr-1.5"></i> Tersimpan di Google Sheet</span>}
-                  {syncStatus === 'error' && <span className="flex items-center text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud-off" className="w-3.5 h-3.5 mr-1.5"></i> Gagal Sinkronisasi</span>}
+                  {syncStatus === 'synced' && <span className="flex items-center text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud" className="w-3.5 h-3.5 mr-1.5"></i> Terhubung Google Sheet</span>}
+                  {syncStatus === 'error' && <span className="flex items-center text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full shadow-sm"><i data-lucide="cloud-off" className="w-3.5 h-3.5 mr-1.5"></i> Gagal Sinkron</span>}
                 </div>
 
-                {/* Dashboard Kartu Utama */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
@@ -289,8 +226,6 @@
                       <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><i data-lucide="wallet" className="w-5 h-5"></i></div>
                     </div>
                     <p className="text-3xl font-bold text-emerald-800">{formatRupiah(balance)}</p>
-                    
-                    {/* Rincian Tunai vs Non Tunai */}
                     <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
                       <div className="bg-emerald-50/60 p-2 rounded-xl">
                         <span className="text-slate-500 block mb-0.5">Tunai</span>
@@ -309,9 +244,6 @@
                       <div className="p-2 bg-teal-100 rounded-lg text-teal-600"><i data-lucide="trending-up" className="w-5 h-5"></i></div>
                     </div>
                     <p className="text-2xl font-bold text-teal-700">{formatRupiah(totalIncome)}</p>
-                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                      Akumulasi seluruh kategori pemasukan bulan ini.
-                    </div>
                   </div>
 
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
@@ -320,18 +252,13 @@
                       <div className="p-2 bg-rose-100 rounded-lg text-rose-600"><i data-lucide="trending-down" className="w-5 h-5"></i></div>
                     </div>
                     <p className="text-2xl font-bold text-rose-600">{formatRupiah(totalExpense)}</p>
-                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                      Akumulasi seluruh kategori pengeluaran bulan ini.
-                    </div>
                   </div>
                 </div>
 
-                {/* --- DIAGRAM STATISTIK BERDASARKAN KATEGORI --- */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  {/* Statistik Pemasukan */}
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                      <i data-lucide="pie-chart" className="w-5 h-5 text-emerald-600"></i> Statistik Pemasukan Berdasarkan Kategori
+                      <i data-lucide="pie-chart" className="w-5 h-5 text-emerald-600"></i> Statistik Pemasukan
                     </h3>
                     <div className="space-y-4">
                       {INCOME_CATEGORIES.map(cat => {
@@ -344,7 +271,7 @@
                               <span className="font-bold text-emerald-700">{formatRupiah(amount)} ({percentage}%)</span>
                             </div>
                             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                              <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                              <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
                             </div>
                           </div>
                         );
@@ -352,10 +279,9 @@
                     </div>
                   </div>
 
-                  {/* Statistik Pengeluaran */}
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                      <i data-lucide="bar-chart-3" className="w-5 h-5 text-rose-600"></i> Statistik Pengeluaran Berdasarkan Kategori
+                      <i data-lucide="bar-chart-3" className="w-5 h-5 text-rose-600"></i> Statistik Pengeluaran
                     </h3>
                     <div className="space-y-4">
                       {EXPENSE_CATEGORIES.map(cat => {
@@ -368,7 +294,7 @@
                               <span className="font-bold text-rose-600">{formatRupiah(amount)} ({percentage}%)</span>
                             </div>
                             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                              <div className="bg-gradient-to-r from-rose-500 to-orange-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                              <div className="bg-gradient-to-r from-rose-500 to-orange-500 h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
                             </div>
                           </div>
                         );
@@ -377,7 +303,6 @@
                   </div>
                 </div>
 
-                {/* Header Rincian Transaksi & Tombol Download */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
                    <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm sm:text-base">
                       <i data-lucide="history" className="w-5 h-5 text-emerald-600"></i>
@@ -393,7 +318,6 @@
                    </div>
                 </div>
 
-                {/* Tabel Rincian Transaksi */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   {isLoading ? (
                     <div className="p-12 text-center text-slate-500">Memuat data...</div>
@@ -417,29 +341,17 @@
                         <tbody className="divide-y divide-slate-100">
                           {filteredTransactions.map((t) => (
                             <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
-                                {new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                              </td>
+                              <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">{new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</td>
                               <td className="px-4 py-3.5 whitespace-nowrap">
                                 <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${t.type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
                                   {t.category}
                                 </span>
                               </td>
-                              <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">
-                                {t.paymentMethod}
-                              </td>
-                              <td className="px-4 py-3.5 text-slate-600">
-                                <div className="max-w-[200px] truncate" title={t.description}>
-                                  {t.description || '-'}
-                                </div>
-                              </td>
-                              <td className={`px-4 py-3.5 text-right font-bold whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
-                              </td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{t.paymentMethod}</td>
+                              <td className="px-4 py-3.5 text-slate-600"><div className="max-w-[200px] truncate" title={t.description}>{t.description || '-'}</div></td>
+                              <td className={`px-4 py-3.5 text-right font-bold whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>{t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}</td>
                               <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                <button onClick={() => handleDelete(t.id)} className="inline-flex items-center justify-center p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer" title="Hapus Transaksi">
-                                  <i data-lucide="trash-2" className="w-4 h-4"></i>
-                                </button>
+                                <button onClick={() => handleDelete(t.id)} className="inline-flex items-center justify-center p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer" title="Hapus"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
                               </td>
                             </tr>
                           ))}
@@ -450,7 +362,6 @@
                 </div>
               </main>
 
-              {/* Report Hidden template for export */}
               <div className="fixed -left-[9999px] top-0 pointer-events-none">
                 <div ref={reportRef} className="bg-white p-10 w-[800px] font-sans text-slate-800">
                   <div className="text-center border-b-4 border-emerald-800 pb-6 mb-6">
@@ -459,18 +370,9 @@
                     <p className="text-slate-600">Periode: Bulan {MONTHS[selectedMonth]} Tahun {selectedYear}</p>
                   </div>
                   <div className="flex gap-4 mb-8">
-                    <div className="flex-1 bg-emerald-50 p-4 rounded-xl text-center">
-                       <p className="text-sm font-semibold text-emerald-700">Total Pemasukan</p>
-                       <p className="text-xl font-bold text-emerald-900">{formatRupiah(totalIncome)}</p>
-                    </div>
-                    <div className="flex-1 bg-rose-50 p-4 rounded-xl text-center">
-                       <p className="text-sm font-semibold text-rose-700">Total Pengeluaran</p>
-                       <p className="text-xl font-bold text-rose-900">{formatRupiah(totalExpense)}</p>
-                    </div>
-                    <div className="flex-1 bg-slate-100 p-4 rounded-xl text-center">
-                       <p className="text-sm font-semibold text-slate-700">Saldo Bersih</p>
-                       <p className="text-xl font-bold text-slate-900">{formatRupiah(balance)}</p>
-                    </div>
+                    <div className="flex-1 bg-emerald-50 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-emerald-700">Total Pemasukan</p><p className="text-xl font-bold text-emerald-900">{formatRupiah(totalIncome)}</p></div>
+                    <div className="flex-1 bg-rose-50 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-rose-700">Total Pengeluaran</p><p className="text-xl font-bold text-rose-900">{formatRupiah(totalExpense)}</p></div>
+                    <div className="flex-1 bg-slate-100 p-4 rounded-xl text-center"><p className="text-sm font-semibold text-slate-700">Saldo Bersih</p><p className="text-xl font-bold text-slate-900">{formatRupiah(balance)}</p></div>
                   </div>
                   <table className="w-full text-left text-sm border-collapse mb-8">
                      <thead>
@@ -497,19 +399,12 @@
                      </tbody>
                   </table>
                   <div className="flex justify-between mt-16 px-10">
-                     <div className="text-center">
-                        <p className="mb-16">Mengetahui,<br/>Ketua DKM</p>
-                        <p className="font-bold underline">_________________</p>
-                     </div>
-                     <div className="text-center">
-                        <p className="mb-16">Dibuat Oleh,<br/>Bendahara Masjid</p>
-                        <p className="font-bold underline">_________________</p>
-                     </div>
+                     <div className="text-center"><p className="mb-16">Mengetahui,<br/>Ketua DKM</p><p className="font-bold underline">_________________</p></div>
+                     <div className="text-center"><p className="mb-16">Dibuat Oleh,<br/>Bendahara Masjid</p><p className="font-bold underline">_________________</p></div>
                   </div>
                 </div>
               </div>
 
-              {/* Modal Input */}
               {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                   <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
