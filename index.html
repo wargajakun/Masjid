@@ -47,6 +47,7 @@
         function App() {
           const [transactions, setTransactions] = useState([]);
           const [isLoading, setIsLoading] = useState(true);
+          const [isExporting, setIsExporting] = useState(false);
           const [syncStatus, setSyncStatus] = useState(GOOGLE_SHEET_WEB_APP_URL ? 'syncing' : 'local');
           const [isModalOpen, setIsModalOpen] = useState(false);
           const [deleteTargetId, setDeleteTargetId] = useState(null);
@@ -227,29 +228,94 @@
             }
           };
 
-          const generateExportElement = async () => {
-            if (!reportRef.current) return null;
-            return await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
+          // Algoritma Ekspor PDF Multi-Halaman
+          const downloadPDF = async () => {
+            if (!reportRef.current) return;
+            setIsExporting(true);
+            showToast('Mengekspor Laporan PDF...');
+
+            try {
+              const element = reportRef.current;
+              const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
+              
+              const imgData = canvas.toDataURL('image/png');
+              const { jsPDF } = window.jspdf;
+              const pdf = new jsPDF('p', 'mm', 'a4');
+              
+              const pdfWidth = pdf.internal.pageSize.getWidth();
+              const pdfHeight = pdf.internal.pageSize.getHeight();
+              
+              const canvasWidth = canvas.width;
+              const canvasHeight = canvas.height;
+              
+              // Rasio tinggi elemen dalam PDF
+              const totalPdfHeight = (canvasHeight * pdfWidth) / canvasWidth;
+              
+              let heightLeft = totalPdfHeight;
+              let position = 0;
+
+              // Halaman Pertama
+              pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalPdfHeight);
+              heightLeft -= pdfHeight;
+
+              // Loop Halaman Berikutnya Jika Melebihi 1 Halaman A4
+              while (heightLeft > 0) {
+                position = heightLeft - totalPdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalPdfHeight);
+                heightLeft -= pdfHeight;
+              }
+
+              pdf.save(`Laporan_Keuangan_Masjid_Miftahul_Yaqin_${MONTHS[selectedMonth]}_${selectedYear}.pdf`);
+              showToast('PDF Berhasil Diunduh!');
+            } catch (err) {
+              showToast('Gagal mengekspor PDF.');
+            } finally {
+              setIsExporting(false);
+            }
           };
 
           const downloadJPG = async () => {
-            const canvas = await generateExportElement();
-            if (!canvas) return;
-            const link = document.createElement('a');
-            link.download = `Laporan_Keuangan_Masjid_Miftahul_Yaqin_${MONTHS[selectedMonth]}_${selectedYear}.jpg`;
-            link.href = canvas.toDataURL('image/jpeg', 1.0);
-            link.click();
+            if (!reportRef.current) return;
+            setIsExporting(true);
+            showToast('Mengekspor Laporan JPG...');
+            try {
+              const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, logging: false });
+              const link = document.createElement('a');
+              link.download = `Laporan_Keuangan_Masjid_Miftahul_Yaqin_${MONTHS[selectedMonth]}_${selectedYear}.jpg`;
+              link.href = canvas.toDataURL('image/jpeg', 1.0);
+              link.click();
+              showToast('Gambar JPG Berhasil Diunduh!');
+            } catch (err) {
+              showToast('Gagal mengekspor Gambar.');
+            } finally {
+              setIsExporting(false);
+            }
           };
 
-          const downloadPDF = async () => {
-            const canvas = await generateExportElement();
-            if (!canvas) return;
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Laporan_Keuangan_Masjid_Miftahul_Yaqin_${MONTHS[selectedMonth]}_${selectedYear}.pdf`);
+          // Fitur Cetak Langsung Browser
+          const printReport = () => {
+            if (!reportRef.current) return;
+            const printContent = reportRef.current.innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+              <html>
+                <head>
+                  <title>Cetak Laporan Keuangan Masjid Miftahul Yaqin</title>
+                  <script src="https://cdn.tailwindcss.com"><\/script>
+                  <style>
+                    @page { size: A4; margin: 15mm; }
+                    body { background: white; color: black; font-family: sans-serif; }
+                  </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                  <div style="width: 100%; max-width: 800px; margin: 0 auto;">
+                    ${printContent}
+                  </div>
+                </body>
+              </html>
+            `);
+            printWindow.document.close();
           };
 
           return (
@@ -402,17 +468,33 @@
                   </div>
                 </div>
 
+                {/* Tombol Ekspor Laporan */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4">
                    <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm sm:text-base">
                       <i data-lucide="history" className="w-5 h-5 text-emerald-600"></i>
                       <span>Rincian Transaksi {MONTHS[selectedMonth]} {selectedYear}</span>
                    </div>
                    <div className="flex gap-2 w-full sm:w-auto justify-end">
-                      <button onClick={downloadJPG} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
+                      <button 
+                        onClick={downloadJPG} 
+                        disabled={isExporting}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer disabled:opacity-50"
+                      >
                         <i data-lucide="image" className="w-4 h-4 text-emerald-600"></i> JPG
                       </button>
-                      <button onClick={downloadPDF} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition cursor-pointer">
+                      <button 
+                        onClick={downloadPDF} 
+                        disabled={isExporting}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-sm font-medium transition cursor-pointer disabled:opacity-50"
+                      >
                         <i data-lucide="file-text" className="w-4 h-4 text-rose-600"></i> PDF
+                      </button>
+                      <button 
+                        onClick={printReport} 
+                        disabled={isExporting}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition cursor-pointer disabled:opacity-50"
+                      >
+                        <i data-lucide="printer" className="w-4 h-4"></i> Cetak
                       </button>
                    </div>
                 </div>
@@ -466,14 +548,14 @@
                 </div>
               </main>
 
-              {/* Element Tersembunyi untuk Ekspor Cetak/PDF Laporan */}
+              {/* Templat Laporan untuk Cetak / Ekspor PDF */}
               <div className="fixed -left-[9999px] top-0 pointer-events-none">
-                <div ref={reportRef} className="bg-white p-10 w-[800px] font-sans text-slate-800">
-                  <div className="text-center border-b-4 border-emerald-800 pb-6 mb-6">
-                    <h1 className="text-3xl font-bold text-emerald-900 mb-1">LAPORAN KEUANGAN MASJID</h1>
+                <div ref={reportRef} className="bg-white p-8 w-[800px] font-sans text-slate-800">
+                  <div className="text-center border-b-4 border-emerald-800 pb-5 mb-5">
+                    <h1 className="text-3xl font-bold text-emerald-950 mb-1">LAPORAN KEUANGAN MASJID</h1>
                     <h2 className="text-xl font-bold text-emerald-700 mb-1">MIFTAHUL YAQIN</h2>
                     <p className="text-sm font-semibold text-emerald-800 mb-2">Blok Sabtu Desa Sukahaji</p>
-                    <p className="text-slate-600">Periode: Bulan {MONTHS[selectedMonth]} Tahun {selectedYear}</p>
+                    <p className="text-slate-600 font-medium">Periode: Bulan {MONTHS[selectedMonth]} Tahun {selectedYear}</p>
                   </div>
 
                   <div className="grid grid-cols-4 gap-3 mb-6">
@@ -483,33 +565,34 @@
                     <div className="bg-teal-50 p-3 rounded-xl text-center"><p className="text-xs font-semibold text-teal-800">Saldo Akhir</p><p className="text-base font-bold text-teal-950">{formatRupiah(endingBalance)}</p></div>
                   </div>
 
-                  <table className="w-full text-left text-sm border-collapse mb-8">
+                  <table className="w-full text-left text-xs border-collapse mb-8">
                      <thead>
                        <tr className="bg-emerald-800 text-white">
-                         <th className="border border-emerald-900 px-3 py-2">Tanggal</th>
-                         <th className="border border-emerald-900 px-3 py-2">Keterangan</th>
-                         <th className="border border-emerald-900 px-3 py-2">Kategori</th>
-                         <th className="border border-emerald-900 px-3 py-2">Metode</th>
-                         <th className="border border-emerald-900 px-3 py-2 text-right">Pemasukan</th>
-                         <th className="border border-emerald-900 px-3 py-2 text-right">Pengeluaran</th>
+                         <th className="border border-emerald-900 px-2.5 py-2">Tanggal</th>
+                         <th className="border border-emerald-900 px-2.5 py-2">Keterangan</th>
+                         <th className="border border-emerald-900 px-2.5 py-2">Kategori</th>
+                         <th className="border border-emerald-900 px-2.5 py-2">Metode</th>
+                         <th className="border border-emerald-900 px-2.5 py-2 text-right">Pemasukan</th>
+                         <th className="border border-emerald-900 px-2.5 py-2 text-right">Pengeluaran</th>
                        </tr>
                      </thead>
                      <tbody>
                        {filteredTransactions.map(t => (
                          <tr key={t.id} className="border-b border-slate-200">
-                           <td className="border border-slate-300 px-3 py-2">{new Date(t.date).toLocaleDateString('id-ID')}</td>
-                           <td className="border border-slate-300 px-3 py-2">{t.description || '-'}</td>
-                           <td className="border border-slate-300 px-3 py-2">{t.category}</td>
-                           <td className="border border-slate-300 px-3 py-2">{t.paymentMethod}</td>
-                           <td className="border border-slate-300 px-3 py-2 text-right text-emerald-700">{t.type === 'income' ? formatRupiah(t.amount) : '-'}</td>
-                           <td className="border border-slate-300 px-3 py-2 text-right text-rose-700">{t.type === 'expense' ? formatRupiah(t.amount) : '-'}</td>
+                           <td className="border border-slate-300 px-2.5 py-2 whitespace-nowrap">{new Date(t.date).toLocaleDateString('id-ID')}</td>
+                           <td className="border border-slate-300 px-2.5 py-2">{t.description || '-'}</td>
+                           <td className="border border-slate-300 px-2.5 py-2">{t.category}</td>
+                           <td className="border border-slate-300 px-2.5 py-2">{t.paymentMethod}</td>
+                           <td className="border border-slate-300 px-2.5 py-2 text-right text-emerald-700 font-semibold">{t.type === 'income' ? formatRupiah(t.amount) : '-'}</td>
+                           <td className="border border-slate-300 px-2.5 py-2 text-right text-rose-700 font-semibold">{t.type === 'expense' ? formatRupiah(t.amount) : '-'}</td>
                          </tr>
                        ))}
                      </tbody>
                   </table>
-                  <div className="flex justify-between mt-16 px-10">
-                     <div className="text-center"><p className="mb-16">Mengetahui,<br/>Ketua DKM</p><p className="font-bold underline">_________________</p></div>
-                     <div className="text-center"><p className="mb-16">Dibuat Oleh,<br/>Bendahara Masjid</p><p className="font-bold underline">_________________</p></div>
+
+                  <div className="flex justify-between mt-12 px-10">
+                     <div className="text-center"><p className="mb-16 text-xs">Mengetahui,<br/>Ketua DKM</p><p className="font-bold text-xs underline">_________________</p></div>
+                     <div className="text-center"><p className="mb-16 text-xs">Dibuat Oleh,<br/>Bendahara Masjid</p><p className="font-bold text-xs underline">_________________</p></div>
                   </div>
                 </div>
               </div>
@@ -571,7 +654,6 @@
               {selectedDetailTx && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                   <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-150">
-                    {/* Header Pop-up Detail */}
                     <div className={`px-6 py-5 text-white flex justify-between items-start ${selectedDetailTx.type === 'income' ? 'bg-gradient-to-r from-emerald-800 to-teal-800' : 'bg-gradient-to-r from-rose-900 to-red-800'}`}>
                       <div>
                         <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 mb-2">
@@ -584,7 +666,6 @@
                       </button>
                     </div>
 
-                    {/* Isi Rincian Transaksi */}
                     <div className="p-6 space-y-4">
                       <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
                         <div>
@@ -617,7 +698,6 @@
                         </p>
                       </div>
 
-                      {/* Tombol Aksi Pop-up */}
                       <div className="flex space-x-3 pt-2">
                         <button 
                           onClick={() => {
@@ -666,4 +746,3 @@
     </script>
 </body>
 </html>
-
